@@ -1,5 +1,5 @@
 import { validationResult } from "express-validator";
-import { ApiError } from "../utils/api-error.js";
+import { ApiError } from "../utils/api-Error.js";
 export const validate = (req, res, next) => {
   const errors = validationResult(req);
 
@@ -11,7 +11,7 @@ export const validate = (req, res, next) => {
   errors.array().map((err) =>
     extractedError.push({
       [err.path]: err.msg,
-    }),
+    })
   );
   console.log(extractedError);
 
