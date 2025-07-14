@@ -3,6 +3,7 @@ import { ApiError } from "../utils/api-Error.js";
 import { ApiResponse } from "../utils/api-Response.js";
 import { User } from "../models/auth.model.js";
 import { emailVerificationMailgenContent, sendEmail } from "../utils/mail.js";
+import crypto from "crypto";
 
 const registerUser = asyncHandler(async (req, res) => {
   const { email, fullname, password } = req.body;
@@ -20,8 +21,11 @@ const registerUser = asyncHandler(async (req, res) => {
   const { unHashedToken, hashedToken, tokenExpiry } =
     user.generateTemporaryToken();
 
+  user.emailVerificationToken = hashedToken;
+  user.emailVerificationExpiry = tokenExpiry;
+
   await user.save();
-  const verificationUrl = `${process.env.BASE_URL}/api/v1/users/verify/${unHashedToken}`;
+  const verificationUrl = `${process.env.BASE_URL}/api/v1/auth/verify/${unHashedToken}`;
   const mailgenContent = emailVerificationMailgenContent(
     fullname,
     verificationUrl
@@ -44,4 +48,23 @@ const registerUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, createdUser, "User Registered Successfully"));
 });
 
-export { registerUser };
+const verifyEmail = asyncHandler(async (req, res) => {
+  const { token } = req.params;
+  const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+  console.log(hashedToken);
+  const user = await User.findOne({
+    emailVerificationToken: hashedToken,
+    emailVerificationExpiry: { $gt: Date.now() },
+  });
+  console.log(user);
+  if (!user) throw new ApiError(401, "Invalid Token");
+
+  user.isEmailVerified = true;
+  user.emailVerificationToken = null;
+  user.emailVerificationExpiry = null;
+
+  await user.save({ validateBeforeSave: false });
+
+  res.status(200).json(new ApiResponse(200, "User Verified Successfully"));
+});
+export { registerUser, verifyEmail };
