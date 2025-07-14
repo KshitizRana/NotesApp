@@ -67,4 +67,50 @@ const verifyEmail = asyncHandler(async (req, res) => {
 
   res.status(200).json(new ApiResponse(200, "User Verified Successfully"));
 });
-export { registerUser, verifyEmail };
+
+const loginUser = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    throw new ApiError(400, "User does not exist");
+  }
+
+  const isPasswordCorrect = await user.isPasswordCorrect(password);
+
+  if (!isPasswordCorrect) {
+    throw new ApiError(400, "Invalid Credentials");
+  }
+
+  const accessToken = user.generateAccessToken();
+  const refreshToken = user.generateRefreshToken();
+
+  if (!accessToken || !refreshToken) {
+    throw new ApiError(500, "AccessToken and RefreshToken not created");
+  }
+
+  const cookieOptions = {
+    httpOnly: true,
+    secure: true,
+    sameSite: "strict",
+  };
+
+  user.refreshToken = refreshToken;
+  await user.save();
+
+  res.cookie("AccessToken", accessToken, cookieOptions);
+  res.cookie("RefreshToken", refreshToken, cookieOptions);
+
+  const loggedInUser = await User.findById(user._id).select(
+    "-password -refreshToken -emailVerificationExpiry -emailVerificationToken"
+  );
+  if (!loggedInUser) {
+    throw new ApiError(500, "Internal Server Error");
+  }
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, loggedInUser, "User Logged in Successfully"));
+});
+export { registerUser, verifyEmail, loginUser };
