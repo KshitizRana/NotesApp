@@ -1,4 +1,4 @@
-function asyncHandler(req, res, next) {
+function asyncHandler(requestHandler) {
   return function (req, res, next) {
     Promise.resolve(requestHandler(req, res, next)).catch(function (err) {
       next(err);
@@ -6,4 +6,4 @@ function asyncHandler(req, res, next) {
   };
 }
 
-export default asyncHandler;
+export { asyncHandler };
