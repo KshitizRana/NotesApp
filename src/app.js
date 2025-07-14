@@ -1,5 +1,5 @@
 import cookieParser from "cookie-parser";
-import express from "express";
+import express, { urlencoded } from "express";
 
 const app = express();
 app.use(express.json());
